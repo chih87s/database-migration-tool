@@ -60,7 +60,7 @@ afterEvaluate{
             create<MavenPublication>("release"){
                 from(components["release"])
                 groupId = "com.github.chih87s"
-                artifactId = "com.db.dbmigration"
+                artifactId = "com.db.dbmigrationtool"
                 version = ver
             }
         }

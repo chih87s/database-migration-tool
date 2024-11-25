@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.org.kotlin.ksp)
     id("maven-publish")
+    jacoco
 }
 
 android {
@@ -23,6 +24,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -51,6 +55,44 @@ dependencies {
     testImplementation(libs.mockito.inline)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.robolectric)
+}
+
+val exclusions = listOf(
+    "**/R.class",
+    "**/R\$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*"
+)
+
+tasks.withType(Test::class) {
+    configure<JacocoTaskExtension> {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("testDebugUnitTest"))
+
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        csv.required.set(false)
+    }
+
+    val classFiles = fileTree("build/tmp/kotlin-classes/debug")
+    val sourceFiles = files("src/main/kotlin", "src/main/java")
+
+    classDirectories.setFrom(classFiles)
+    sourceDirectories.setFrom(sourceFiles)
+    executionData.setFrom(fileTree("build") {
+        includes.add("jacoco/testDebugUnitTest.exec")
+    })
+}
+
+tasks.named("build") {
+    dependsOn("jacocoTestReport")
 }
 
 val ver = "0.0.1"

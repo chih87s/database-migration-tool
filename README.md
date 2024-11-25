@@ -1,6 +1,6 @@
 # DatabaseMigrationTool
 
-> A robust, flexible library for managing complex database schema migrations in Android projects. Supports both native SQLite and the Room library, ensuring data integrity and smooth transitions during schema updates.
+A robust, flexible library for managing complex database schema migrations in Android projects. Supports both native SQLite and the Room library, ensuring data integrity and smooth transitions during schema updates.
 
 [![API](https://img.shields.io/badge/API-29%2B-yellow.svg?style=flat)](https://developer.android.com/about/versions/10)
 [![Kotlin Version](https://img.shields.io/badge/Kotlin-2.0.21-blue.svg)](https://kotlinlang.org)

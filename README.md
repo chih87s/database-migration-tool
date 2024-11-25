@@ -1,4 +1,4 @@
-# database-migration-tool
+# DatabaseMigrationTool
 
 > A robust, flexible library for managing complex database schema migrations in Android projects. Supports both native SQLite and the Room library, ensuring data integrity and smooth transitions during schema updates.
 

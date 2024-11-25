@@ -1,11 +1,11 @@
 # database-migration-tool
 
 ## Project Overview
-> A robust, flexible library for managing complex database schema migrations in Android projects.
-> Supports both native SQLite and the Room library, ensuring data integrity and smooth transitions during schema updates.
+> A robust, flexible library for managing complex database schema migrations in Android projects. Supports both native SQLite and the Room library, ensuring data integrity and smooth transitions during schema updates.
 
 [![API](https://img.shields.io/badge/API-29%2B-yellow.svg?style=flat)](https://developer.android.com/about/versions/10)
 [![Kotlin Version](https://img.shields.io/badge/Kotlin-2.0.21-blue.svg)](https://kotlinlang.org)
+[![LICENSE](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/chih87s/database-migration-tool/blob/main/LICENSE)
 
 ## Table of Contents
 - [Features](#features)
@@ -122,7 +122,7 @@ val dbHelper = object : SQLiteOpenHelper(context, "app-database", null, 2) {
 - Rollback Support
 
 ## License
-`database-migration-tool` is available under the MIT license.. See the [LICENSE](https://github.com/chih87s/database-migration-tool/blob/main/LICENSE) file for more information.
+`database-migration-tool` is available under the MIT license. See the [LICENSE](https://github.com/chih87s/database-migration-tool/blob/main/LICENSE) file for more information.
 
 ## Contributing
 Contributions are welcome! 🎉 We appreciate your help to make this tool even better.

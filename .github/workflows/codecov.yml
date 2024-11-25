@@ -19,6 +19,7 @@ jobs:
         uses: actions/setup-java@v4.5.0
         with:
           java-version: '17'
+          distribution: 'adopt'
 
       - name: Build with Gradle
         uses: gradle/actions@v4.2.1

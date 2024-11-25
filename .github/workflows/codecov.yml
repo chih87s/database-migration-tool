@@ -2,44 +2,35 @@ name: Test and upload coverage
 
 on:
   push:
-    branches:
-      - main
+    branches : [main]
   pull_request:
-    branches:
-      - main
+    branches : [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code
-      - name: Checkout code
-        uses: actions/checkout@v2
 
-      # Step 2: Set up Java environment
-      - name: Set up JDK 17
-        uses: actions/setup-java@v2
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4.5.0
         with:
           java-version: '17'
 
-      # Step 3: Set up Android SDK
-      - name: Set up Android SDK
-        uses: ReactiveCircus/android-sdk-setup-action@v2
-        with:
-          sdk-version: '35'
+      - name: Build with Gradle
+        uses: gradle/actions@v4.2.1
 
-      # Step 4: Install dependencies and build the project
       - name: Install dependencies and build
         run: |
           ./gradlew clean build
 
-      # Step 5: Run tests and generate coverage report
       - name: Run unit tests with coverage
         run: |
           ./gradlew testDebugUnitTest
 
-      # Step 6: Upload coverage to Codecov
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:

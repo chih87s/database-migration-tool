@@ -1,6 +1,5 @@
 # database-migration-tool
 
-## Project Overview
 > A robust, flexible library for managing complex database schema migrations in Android projects. Supports both native SQLite and the Room library, ensuring data integrity and smooth transitions during schema updates.
 
 [![API](https://img.shields.io/badge/API-29%2B-yellow.svg?style=flat)](https://developer.android.com/about/versions/10)

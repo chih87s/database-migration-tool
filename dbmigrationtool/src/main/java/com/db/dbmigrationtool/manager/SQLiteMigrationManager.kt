@@ -1,10 +1,12 @@
 package com.db.dbmigrationtool.manager
 
+import android.content.ContentValues
 import android.util.Log
 import com.db.dbmigrationtool.data.Migration
 import com.db.dbmigrationtool.exception.MigrationException
 import com.db.dbmigrationtool.tools.DatabaseMigrationTool
 import com.db.dbmigrationtool.tools.SQLiteMigrationTool
+import com.db.dbmigrationtool.utils.SQLStatementsUtils
 
 class SQLiteMigrationManager internal constructor(
     migrations: List<Migration>
@@ -13,23 +15,22 @@ class SQLiteMigrationManager internal constructor(
 
     override fun executeMigrationScript(dbTool: DatabaseMigrationTool, script: String) {
         val sqLiteDatabase = (dbTool as SQLiteMigrationTool).database
+        val statements = SQLStatementsUtils.splitSQLStatements(script)
+
         sqLiteDatabase.beginTransaction()
         try {
-            Log.d("MigrationScript", "Executing script: $script")
-            sqLiteDatabase.execSQL(script)
+            statements.forEach { statement ->
+                Log.d("SQLiteMigration", "Executing script: $statement")
+                sqLiteDatabase.execSQL(statement)
+            }
             sqLiteDatabase.setTransactionSuccessful()
-            println("executeMigrationScript：Executing script:")
         } catch (e: Exception) {
             Log.e("SQLiteMigration", "Migration failed with script: $script", e)
-            println("executeMigrationScript：Migration failed with script:$script")
-
             throw MigrationException("Migration failed: ${e.message}", e)
         } finally {
             sqLiteDatabase.endTransaction()
         }
     }
-
-
 
     override fun updateVersion(dbTool: DatabaseMigrationTool, version: Int) {
         val sqLiteDatabase = (dbTool as SQLiteMigrationTool).database
@@ -37,15 +38,18 @@ class SQLiteMigrationManager internal constructor(
 
         sqLiteDatabase.beginTransaction()
         try {
-            sqLiteDatabase.execSQL("INSERT OR REPLACE INTO schema_version (version) VALUES ($version);")
+            val contentValues = ContentValues().apply {
+                put("version", version)
+            }
+
+            val rowsAffected = sqLiteDatabase.update("schema_version", contentValues, null, null)
+            if (rowsAffected == 0) {
+                sqLiteDatabase.insert("schema_version", null, contentValues)
+            }
             sqLiteDatabase.setTransactionSuccessful()
             Log.d("SQLiteMigration", "Updated schema_version to version $version")
-            println("updateVersion： Updated schema_version to version $version\"")
-
         } catch (e: Exception) {
             Log.e("SQLiteUpdate", "Error updating version to $version", e)
-            println("updateVersion ：Error updating schema_version to version $version\" $e")
-
         } finally {
             sqLiteDatabase.endTransaction()
         }
@@ -57,11 +61,19 @@ class SQLiteMigrationManager internal constructor(
 
         val cursor = sqLiteDatabase.rawQuery("SELECT version FROM schema_version LIMIT 1;", null)
         var version = 0
-        if (cursor.moveToFirst()) {
-            version = cursor.getInt(0)
-        }
-        cursor.close()
 
+        if (cursor.moveToFirst()) {
+            val columnIndex = cursor.getColumnIndex("version")
+            if (columnIndex != -1) {
+                version = cursor.getInt(columnIndex)
+            } else {
+                Log.e("SQLiteMigration", "Column 'version' does not exist in the result set.")
+            }
+        } else {
+            Log.e("SQLiteMigration", "No rows found in schema_version table.")
+        }
+
+        cursor.close()
         Log.d("SQLiteMigration", "Current version from schema_version: $version")
         return version
     }
@@ -73,8 +85,6 @@ class SQLiteMigrationManager internal constructor(
         val cursor = sqLiteDatabase.rawQuery("SELECT COUNT(*) FROM schema_version;", null)
         if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
             sqLiteDatabase.execSQL("INSERT INTO schema_version (version) VALUES (0);")
-            Log.d("SQLiteInit", "Table initialized with version 0")
-            println("initializeVersionTable： Table initialized with version 0")
         }
         cursor.close()
 

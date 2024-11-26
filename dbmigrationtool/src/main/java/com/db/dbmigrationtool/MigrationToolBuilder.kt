@@ -20,6 +20,7 @@ class MigrationToolBuilder(
         return this
     }
 
+
     fun buildSQLMigrateManager(): SQLiteMigrationManager {
         validateMigrations()
         return SQLiteMigrationManager(migrations)

@@ -25,30 +25,21 @@ object TestMigrationScripts {
     // Rollback migration script for version 2
     // Remove email column from users table
     const val ROLLBACK_REMOVE_EMAIL_COLUMN = """
-        CREATE TABLE IF NOT EXISTS users_temp AS SELECT id, name, age FROM users;
+        CREATE TABLE IF NOT EXISTS users_without_email AS SELECT id, name, age FROM users;
         DROP TABLE users;
-        ALTER TABLE users_temp RENAME TO users;
+        ALTER TABLE users_without_email RENAME TO users;
     """
 
-    // Add more migration scripts
-    const val ADD_GENDER_COLUMN = """
-        ALTER TABLE users ADD COLUMN gender INTEGER;
-    """
-
-    const val ROLLBACK_GENDER_COLUMN = """
-        CREATE TABLE IF NOT EXISTS users_temp AS SELECT id, name, age FROM users;
-        DROP TABLE users;
-        ALTER TABLE users_temp RENAME TO users;
-    """
-
+    // Forward migration script for version 3: Add phone column to users table
     const val ALTER_USER_TABLE_ADD_PHONE = """
         ALTER TABLE users ADD COLUMN phone TEXT;
     """
-
-    const val ROLLBACK_ADD_PHONE_COLUMN = """
-        CREATE TABLE IF NOT EXISTS users_temp AS SELECT id, name, age, email FROM users;
+    // Rollback migration script for version 3
+    // Remove phone column from users table
+    const val ROLLBACK_REMOVE_PHONE_COLUMN = """
+        CREATE TABLE users_without_phone AS SELECT id, name, age, email FROM users;   
         DROP TABLE users;
-        ALTER TABLE users_temp RENAME TO users;
+        ALTER TABLE users_without_phone RENAME TO users;
     """
 
 }

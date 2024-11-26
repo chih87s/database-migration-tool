@@ -1,8 +1,8 @@
 package com.db.dbmigrationtool
 
 import android.content.Context
+import android.util.Log
 import androidx.room.ColumnInfo
-import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -10,13 +10,19 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.test.core.app.ApplicationProvider
 import com.db.dbmigrationtool.data.Migration
+import com.db.dbmigrationtool.exception.MigrationException
 import com.db.dbmigrationtool.manager.RoomMigrationManager
 import com.db.dbmigrationtool.tools.RoomMigrationTool
+import com.db.dbmigrationtool.tools.SQLiteMigrationTool
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mock
+import org.mockito.MockedStatic
+import org.mockito.Mockito.mockStatic
+import org.mockito.kotlin.eq
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
@@ -25,6 +31,8 @@ class RoomMigrationTest {
     private lateinit var roomMigrationManager: RoomMigrationManager
     private lateinit var roomDatabase: TestDatabase
 
+    @Mock
+    private lateinit var logMock: MockedStatic<Log>
 
     @Before
     fun setup() {
@@ -33,7 +41,49 @@ class RoomMigrationTest {
             context, TestDatabase::class.java
         ).build()
 
+        logMock = mockStatic(Log::class.java)
+    }
 
+    @After
+    fun tearDown() {
+        roomDatabase.close()
+        logMock.close()
+    }
+
+    private fun queryForTableExists(tableName: String): Boolean {
+        val cursor = roomDatabase.query(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", arrayOf(tableName)
+        )
+        cursor.use {
+            return it.moveToFirst() && it.getString(0) == tableName
+        }
+    }
+
+    @Test
+    fun roomSingleMigrationTest() {
+        val migration = Migration(
+            version = 1,
+            migrationScript = TestMigrationScripts.CREATE_USER_TABLE,
+            rollbackScript = TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+        )
+
+        roomMigrationManager =
+            MigrationToolBuilder().addSingleMigration(migration).buildRoomMigrateManager()
+
+        try {
+            roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), 0, 1)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Assert.fail("Migration failed: ${e.message}")
+        }
+
+        Assert.assertTrue(queryForTableExists("users"))
+    }
+
+    @Test
+    fun roomMultipleMigrationsTest() {
+        val currentVersion = 0
+        val targetVersion = 3
         val migrations = listOf(
             Migration(1, TestMigrationScripts.CREATE_USER_TABLE),
             Migration(2, TestMigrationScripts.ALTER_USER_TABLE_ADD_PHONE),
@@ -43,53 +93,78 @@ class RoomMigrationTest {
         roomMigrationManager =
             MigrationToolBuilder().addMultipleMigrations(migrations).buildRoomMigrateManager()
 
-    }
-
-    @After
-    fun tearDown() {
-        roomDatabase.close()
-    }
-
-
-    @Test
-    fun roomMigrationTest() {
-        val currentVersion = 0
-        val targetVersion = 3
 
         roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), currentVersion, targetVersion)
 
         val cursor = roomDatabase.query("PRAGMA table_info(users)", null)
 
         val columns = mutableListOf<String>()
-        if (cursor.moveToFirst()) {
-            do {
-                columns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
-            } while (cursor.moveToNext())
+        cursor.use {
+            if (it.moveToFirst()) {
+                do {
+                    columns.add(it.getString(it.getColumnIndexOrThrow("name")))
+                } while (it.moveToNext())
+            }
         }
-        cursor.close()
-
         Assert.assertTrue(columns.containsAll(listOf("id", "name", "age", "phone", "email")))
-
     }
 
     @Test
     fun roomMigrationRollback() {
-        val currentVersion = 3
-        val targetVersion = 1
 
-        roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), currentVersion, targetVersion)
-        val cursor = roomDatabase.query("PRAGMA table_info(users)", null)
+        val migrations = listOf(
+            Migration(
+                1,
+                TestMigrationScripts.CREATE_USER_TABLE,
+                TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+            ),
+            Migration(
+                2,
+                TestMigrationScripts.ALTER_USER_TABLE_ADD_EMAIL,
+                TestMigrationScripts.ROLLBACK_REMOVE_EMAIL_COLUMN
+            ),
+            Migration(
+                3,
+                TestMigrationScripts.ALTER_USER_TABLE_ADD_PHONE,
+                TestMigrationScripts.ROLLBACK_REMOVE_PHONE_COLUMN
+            )
+        )
+
+        roomMigrationManager =
+            MigrationToolBuilder().addMultipleMigrations(migrations).buildRoomMigrateManager()
+
+        roomMigrationManager.migrate(
+            RoomMigrationTool(roomDatabase),
+            0,
+            3
+        )
+
+        roomMigrationManager.rollbackToVersion(RoomMigrationTool(roomDatabase), 1)
+
 
         val columns = mutableListOf<String>()
-        if (cursor.moveToFirst()) {
-            do {
-                columns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")))
-            } while (cursor.moveToNext())
+        val afterCursor = roomDatabase.query("PRAGMA table_info(users)", null)
+        afterCursor.use {
+            while (it.moveToNext()) {
+                columns.add(it.getString(it.getColumnIndex("name")))
+            }
         }
-        cursor.close()
 
-        Assert.assertTrue(columns.containsAll(listOf("id", "name", "age")))
+        Assert.assertFalse("Phone column should have been removed", columns.contains("phone"))
+        Assert.assertFalse("Email column should have been removed", columns.contains("email"))
     }
+
+    @Test(expected = MigrationException::class)
+    fun roomMigrationRollback_invalid(){
+        val migrations = listOf(
+            Migration(1, "CREATE TABLE users"),
+            Migration(2, "ALTER TABLE users ADD COLUMN email")
+        )
+        roomMigrationManager =
+            MigrationToolBuilder().addMultipleMigrations(migrations).buildRoomMigrateManager()
+        roomMigrationManager.rollbackToVersion(RoomMigrationTool(roomDatabase),2)
+    }
+
 
     @Test
     fun roomInitializeMigration() {
@@ -97,6 +172,15 @@ class RoomMigrationTest {
             ApplicationProvider.getApplicationContext<Context>(),
             TestDatabase::class.java
         ).build()
+
+        val migration = Migration(
+            version = 1,
+            migrationScript = TestMigrationScripts.CREATE_USER_TABLE,
+            rollbackScript = TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+        )
+
+        roomMigrationManager =
+            MigrationToolBuilder().addSingleMigration(migration).buildRoomMigrateManager()
 
         roomMigrationManager.initializeVersionTable(RoomMigrationTool(freshRoomDatabase))
 
@@ -108,8 +192,84 @@ class RoomMigrationTest {
         }.getOrElse { false }
 
         Assert.assertTrue("Version table should be initialized with version 0", versionTableExists)
-
         freshRoomDatabase.close()
+    }
+
+    @Test
+    fun roomGetCurrentVersion() {
+
+        val migration = Migration(
+            version = 1,
+            migrationScript = TestMigrationScripts.CREATE_USER_TABLE,
+            rollbackScript = TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+        )
+
+        val targetVersion = 1
+
+        roomMigrationManager =
+            MigrationToolBuilder().addSingleMigration(migration).buildRoomMigrateManager()
+
+        roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), 0, targetVersion)
+
+        val currentVersion = roomMigrationManager.getCurrentVersion(RoomMigrationTool(roomDatabase))
+
+        Assert.assertEquals(currentVersion, targetVersion)
+
+    }
+
+    @Test
+    fun roomUpdateVersion() {
+        val migration = Migration(
+            version = 1,
+            migrationScript = TestMigrationScripts.CREATE_USER_TABLE,
+            rollbackScript = TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+        )
+        val targetVersion = 1
+        roomMigrationManager =
+            MigrationToolBuilder().addSingleMigration(migration).buildRoomMigrateManager()
+        roomMigrationManager.updateVersion(RoomMigrationTool(roomDatabase), targetVersion)
+        val currentVersion = roomMigrationManager.getCurrentVersion(RoomMigrationTool(roomDatabase))
+        Assert.assertEquals(currentVersion, targetVersion)
+
+    }
+
+
+    @Test
+    fun roomNoMigrationNeeded() {
+
+        val migration = Migration(
+            version = 1,
+            migrationScript = TestMigrationScripts.CREATE_USER_TABLE,
+            rollbackScript = TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+        )
+        roomMigrationManager =
+            MigrationToolBuilder().addSingleMigration(migration).buildRoomMigrateManager()
+
+        roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), 1, 1)
+
+        logMock.verify {
+            Log.i(
+                eq("DatabaseMigration"),
+                eq("Database is already at version 1. No migration needed.")
+            )
+        }
+    }
+
+
+    @Test
+    fun testMigrationExceptionThrown(){
+        val migrations = listOf(
+            Migration(1, "CREATE TABLE users"),
+            Migration(2, "INVALID MIGRATION SCRIPT")
+        )
+        roomMigrationManager =
+            MigrationToolBuilder().addMultipleMigrations(migrations).buildRoomMigrateManager()
+
+
+        val exception = Assert.assertThrows(MigrationException::class.java) {
+            roomMigrationManager.migrate(RoomMigrationTool(roomDatabase),0,2)
+        }
+        Assert.assertEquals("Migration failed: incomplete input (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE users", exception.message)
     }
 
 
@@ -122,12 +282,7 @@ data class TestUser(
     @ColumnInfo(name = "age") val age: Int,
 )
 
-@Dao
-interface UserDao {
-
-}
 
 @Database(entities = [TestUser::class], version = 1, exportSchema = false)
 abstract class TestDatabase : RoomDatabase() {
-    abstract fun userDao(): UserDao
 }

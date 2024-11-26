@@ -2,6 +2,7 @@ package com.db.dbmigrationtool.manager
 
 import android.util.Log
 import com.db.dbmigrationtool.data.Migration
+import com.db.dbmigrationtool.exception.MigrationException
 import com.db.dbmigrationtool.interfaces.DatabaseMigration
 import com.db.dbmigrationtool.tools.DatabaseMigrationTool
 
@@ -24,8 +25,6 @@ abstract class BaseMigrationManager(
                     executeMigrationScript(dbTool, migration.migrationScript)
                     updateVersion(dbTool, migration.version)
                     Log.i("DatabaseMigration", "Migrated to version ${migration.version}")
-                    println("migrate : Migrated to version ${migration.version}\n")
-
                 }
         } else if (currentVersion > targetVersion) {
             // Rollback migrations
@@ -51,7 +50,7 @@ abstract class BaseMigrationManager(
     override fun rollbackToVersion(dbTool: DatabaseMigrationTool, targetVersion: Int) {
         val currentVersion = getCurrentVersion(dbTool)
         if (targetVersion >= currentVersion) {
-            throw IllegalArgumentException("Target version must be less than the current version.")
+            throw MigrationException("Target version must be less than the current version.")
         }
 
         migrations.filter { it.version in (targetVersion + 1)..currentVersion }

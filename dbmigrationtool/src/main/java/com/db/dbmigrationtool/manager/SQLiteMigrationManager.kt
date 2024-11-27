@@ -41,15 +41,11 @@ class SQLiteMigrationManager internal constructor(
             val contentValues = ContentValues().apply {
                 put("version", version)
             }
-
-            val rowsAffected = sqLiteDatabase.update("schema_version", contentValues, null, null)
-            if (rowsAffected == 0) {
-                sqLiteDatabase.insert("schema_version", null, contentValues)
-            }
+            sqLiteDatabase.update("schema_version", contentValues, null, null)
             sqLiteDatabase.setTransactionSuccessful()
             Log.d("SQLiteMigration", "Updated schema_version to version $version")
         } catch (e: Exception) {
-            Log.e("SQLiteUpdate", "Error updating version to $version", e)
+            Log.e("SQLiteUpdate", "Error updating version to $version")
         } finally {
             sqLiteDatabase.endTransaction()
         }
@@ -59,22 +55,16 @@ class SQLiteMigrationManager internal constructor(
         val sqLiteDatabase = (dbTool as SQLiteMigrationTool).database
         initializeVersionTable(dbTool)
 
-        val cursor = sqLiteDatabase.rawQuery("SELECT version FROM schema_version LIMIT 1;", null)
         var version = 0
-
-        if (cursor.moveToFirst()) {
-            val columnIndex = cursor.getColumnIndex("version")
-            if (columnIndex != -1) {
-                version = cursor.getInt(columnIndex)
+        sqLiteDatabase.rawQuery("SELECT version FROM schema_version LIMIT 1;", null).use { cursor ->
+            if (cursor.moveToFirst()) {
+                version = cursor.getInt(0)
             } else {
-                Log.e("SQLiteMigration", "Column 'version' does not exist in the result set.")
+                Log.e("SQLiteMigration", "No rows found in schema_version table.")
             }
-        } else {
-            Log.e("SQLiteMigration", "No rows found in schema_version table.")
         }
-
-        cursor.close()
         Log.d("SQLiteMigration", "Current version from schema_version: $version")
+
         return version
     }
 
@@ -82,11 +72,11 @@ class SQLiteMigrationManager internal constructor(
         val sqLiteDatabase = (dbTool as SQLiteMigrationTool).database
         sqLiteDatabase.execSQL("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY);")
 
-        val cursor = sqLiteDatabase.rawQuery("SELECT COUNT(*) FROM schema_version;", null)
-        if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
-            sqLiteDatabase.execSQL("INSERT INTO schema_version (version) VALUES (0);")
+        sqLiteDatabase.rawQuery("SELECT COUNT(*) FROM schema_version;", null).use { cursor ->
+            if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
+                sqLiteDatabase.execSQL("INSERT INTO schema_version (version) VALUES (0);")
+            }
         }
-        cursor.close()
 
     }
 }

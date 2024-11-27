@@ -1,6 +1,7 @@
 package com.db.dbmigrationtool
 
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
@@ -13,10 +14,19 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.anyInt
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mock
 import org.mockito.MockedStatic
+import org.mockito.Mockito
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 
@@ -26,12 +36,13 @@ class SQLiteMigrationTest {
     private lateinit var sqliteMigrationManager: SQLiteMigrationManager
     private lateinit var sqliteDatabase: SQLiteDatabase
 
-    @Mock
+
     private lateinit var logMock: MockedStatic<Log>
 
     @Before
     fun setup() {
-        MockitoAnnotations.openMocks(this)
+
+        logMock = mockStatic(Log::class.java)
 
         val context: Context = ApplicationProvider.getApplicationContext()
         val dbFile = File(context.getDatabasePath("test.db").absolutePath)
@@ -168,7 +179,8 @@ class SQLiteMigrationTest {
                 }
             }
 
-            val currentVersion = sqliteMigrationManager.getCurrentVersion(SQLiteMigrationTool(sqliteDatabase))
+            val currentVersion =
+                sqliteMigrationManager.getCurrentVersion(SQLiteMigrationTool(sqliteDatabase))
 
             Assert.assertFalse(
                 "Email column should have been removed after rollback",
@@ -184,15 +196,53 @@ class SQLiteMigrationTest {
     }
 
     @Test(expected = MigrationException::class)
-    fun sqliteMigrationRollback_invalid(){
+    fun sqliteMigrationRollback_invalid() {
         val migrations = listOf(
             Migration(1, "CREATE TABLE users"),
             Migration(2, "ALTER TABLE users ADD COLUMN email")
         )
         sqliteMigrationManager =
             MigrationToolBuilder().addMultipleMigrations(migrations).buildSQLMigrateManager()
-        sqliteMigrationManager.rollbackToVersion(SQLiteMigrationTool(sqliteDatabase),2)
+        sqliteMigrationManager.rollbackToVersion(SQLiteMigrationTool(sqliteDatabase), 2)
     }
+
+    @Test
+    fun sqlite_migration_target_less_than_current() {
+        val migrations = listOf(
+            Migration(
+                1,
+                TestMigrationScripts.CREATE_USER_TABLE,
+                TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE
+            ),
+            Migration(
+                2,
+                TestMigrationScripts.ALTER_USER_TABLE_ADD_EMAIL,
+                TestMigrationScripts.ROLLBACK_REMOVE_EMAIL_COLUMN
+            )
+        )
+        sqliteMigrationManager =
+            MigrationToolBuilder().addMultipleMigrations(migrations).buildSQLMigrateManager()
+
+        sqliteMigrationManager.migrate(SQLiteMigrationTool(sqliteDatabase), 0, 2)
+
+        sqliteMigrationManager.migrate(SQLiteMigrationTool(sqliteDatabase), 2, 1)
+
+        sqliteDatabase.rawQuery("PRAGMA table_info(users)", null).use { cursor ->
+            var emailColumnExists = false
+            while (cursor.moveToNext()) {
+                val columnName = cursor.getString(cursor.getColumnIndex("name"))
+                if (columnName == "email") {
+                    emailColumnExists = true
+                    break
+                }
+            }
+            Assert.assertFalse(
+                "Email column should have been removed after rollback",
+                emailColumnExists
+            )
+        }
+    }
+
 
     @Test
     fun sqliteNoMigrationNeeded() {
@@ -234,11 +284,12 @@ class SQLiteMigrationTest {
             Assert.assertTrue("Version table should have been created", tableExists)
         }
 
-        sqliteDatabase.rawQuery("SELECT version FROM schema_version LIMIT 1", null).use { versionCursor ->
-            versionCursor.moveToFirst()
-            val initialVersion = versionCursor.getInt(0)
-            Assert.assertEquals("Version should be initialized to 0", 0, initialVersion)
-        }
+        sqliteDatabase.rawQuery("SELECT version FROM schema_version LIMIT 1", null)
+            .use { versionCursor ->
+                versionCursor.moveToFirst()
+                val initialVersion = versionCursor.getInt(0)
+                Assert.assertEquals("Version should be initialized to 0", 0, initialVersion)
+            }
 
     }
 
@@ -277,7 +328,6 @@ class SQLiteMigrationTest {
         )
 
         val targetVersion = 1
-
         sqliteMigrationManager =
             MigrationToolBuilder().addSingleMigration(migration).buildSQLMigrateManager()
 
@@ -287,11 +337,12 @@ class SQLiteMigrationTest {
             sqliteMigrationManager.getCurrentVersion(SQLiteMigrationTool(sqliteDatabase))
 
         Assert.assertEquals(currentVersion, targetVersion)
+
     }
 
 
     @Test
-    fun testMigrationExceptionThrown(){
+    fun testMigrationExceptionThrown() {
         val migrations = listOf(
             Migration(1, "CREATE TABLE users"),
             Migration(2, "INVALID MIGRATION SCRIPT")
@@ -301,9 +352,12 @@ class SQLiteMigrationTest {
 
 
         val exception = Assert.assertThrows(MigrationException::class.java) {
-            sqliteMigrationManager.migrate(SQLiteMigrationTool(sqliteDatabase),0,2)
+            sqliteMigrationManager.migrate(SQLiteMigrationTool(sqliteDatabase), 0, 2)
         }
-        Assert.assertEquals("Migration failed: incomplete input (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE users", exception.message)
+        Assert.assertEquals(
+            "Migration failed: incomplete input (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE users",
+            exception.message
+        )
     }
 
 

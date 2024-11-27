@@ -11,8 +11,7 @@ import com.db.dbmigrationtool.utils.SQLStatementsUtils
 
 class RoomMigrationManager internal constructor(
     migrations: List<Migration>
-): BaseMigrationManager(migrations)
-{
+) : BaseMigrationManager(migrations) {
 
     override fun executeMigrationScript(dbTool: DatabaseMigrationTool, script: String) {
         val roomDatabase = (dbTool as RoomMigrationTool).database
@@ -39,21 +38,16 @@ class RoomMigrationManager internal constructor(
         val supportSQLiteDatabase = roomDatabase.openHelper.writableDatabase
         initializeVersionTable(dbTool)
 
-        val cursor = supportSQLiteDatabase.query("SELECT version FROM schema_version LIMIT 1;")
         var version = 0
 
-        if (cursor.moveToFirst()) {
-            val columnIndex = cursor.getColumnIndex("version")
-            if (columnIndex != -1) {
-                version = cursor.getInt(columnIndex)
+        supportSQLiteDatabase.query("SELECT version FROM schema_version LIMIT 1;").use { cursor ->
+            if (cursor.moveToFirst()) {
+                version = cursor.getInt(0)
             } else {
-                Log.e("RoomMigration", "Column 'version' does not exist in the result set.")
+                Log.e("RoomMigration", "No rows found in schema_version table.")
             }
-        } else {
-            Log.e("RoomMigration", "No rows found in schema_version table.")
         }
 
-        cursor.close()
         Log.d("RoomMigration", "Current version from schema_version: $version")
         return version
     }
@@ -65,30 +59,23 @@ class RoomMigrationManager internal constructor(
 
         supportSQLiteDatabase.beginTransaction()
         try {
-            val cursor = supportSQLiteDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'")
-            if (!cursor.moveToFirst()) {
-                Log.e("SQLiteUpdate", "Table 'schema_version' does not exist")
-                return
-            }
 
             val contentValues = ContentValues().apply {
                 put("version", version)
             }
 
-            val rowsAffected = supportSQLiteDatabase.update("schema_version",
+            supportSQLiteDatabase.update(
+                "schema_version",
                 SQLiteDatabase.CONFLICT_NONE,
                 contentValues,
                 null,
-                null)
-
-            if (rowsAffected == 0) {
-                supportSQLiteDatabase.insert("schema_version", SQLiteDatabase.CONFLICT_REPLACE, contentValues)
-            }
+                null
+            )
 
             supportSQLiteDatabase.setTransactionSuccessful()
-        }catch (e:Exception){
+        } catch (e: Exception) {
             Log.e("SQLiteUpdate", "Error updating version to $version", e)
-        }finally{
+        } finally {
             supportSQLiteDatabase.endTransaction()
         }
 
@@ -98,10 +85,10 @@ class RoomMigrationManager internal constructor(
         val roomDatabase = (dbTool as RoomMigrationTool).database
         val supportSQLiteDatabase = roomDatabase.openHelper.writableDatabase
         supportSQLiteDatabase.execSQL("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY);")
-        val cursor = supportSQLiteDatabase.query("SELECT COUNT(*) FROM schema_version;")
-        if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
-            supportSQLiteDatabase.execSQL("INSERT INTO schema_version (version) VALUES (0);")
+        supportSQLiteDatabase.query("SELECT COUNT(*) FROM schema_version;").use { cursor ->
+            if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
+                supportSQLiteDatabase.execSQL("INSERT INTO schema_version (version) VALUES (0);")
+            }
         }
-        cursor.close()
     }
 }

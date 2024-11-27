@@ -4,7 +4,6 @@ A robust, flexible library for managing complex database schema migrations in An
 
 [![API](https://img.shields.io/badge/API-29%2B-yellow.svg?style=flat)](https://developer.android.com/about/versions/10)
 [![Kotlin Version](https://img.shields.io/badge/Kotlin-2.0.21-blue.svg)](https://kotlinlang.org)
-[![codecov](https://codecov.io/gh/chih87s/database-migration-tool/branch/main/graph/badge.svg?token=3OM8ETAINJ)](https://codecov.io/gh/chih87s/database-migration-tool)
 [![LICENSE](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/chih87s/database-migration-tool/blob/main/LICENSE)
 
 ## Table of Contents

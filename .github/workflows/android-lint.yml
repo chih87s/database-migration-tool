@@ -21,5 +21,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Clean Gradle Cache
+        run: ./gradlew clean --no-daemon
+
       - name: Run Android Lint
         run: ./gradlew lint

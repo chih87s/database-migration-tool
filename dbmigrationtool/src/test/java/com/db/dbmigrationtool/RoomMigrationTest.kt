@@ -165,6 +165,32 @@ class RoomMigrationTest {
         roomMigrationManager.rollbackToVersion(RoomMigrationTool(roomDatabase),2)
     }
 
+    @Test
+    fun sqlite_migration_target_less_than_current(){
+        val migrations = listOf(
+            Migration(1, TestMigrationScripts.CREATE_USER_TABLE,TestMigrationScripts.ROLLBACK_CREATE_USER_TABLE),
+            Migration(2, TestMigrationScripts.ALTER_USER_TABLE_ADD_EMAIL, TestMigrationScripts.ROLLBACK_REMOVE_EMAIL_COLUMN)
+        )
+        roomMigrationManager =
+            MigrationToolBuilder().addMultipleMigrations(migrations).buildRoomMigrateManager()
+
+        roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), 0, 2)
+
+        roomMigrationManager.migrate(RoomMigrationTool(roomDatabase), 2,1)
+
+        roomDatabase.query("PRAGMA table_info(users)", null).use { cursor ->
+            var emailColumnExists = false
+            while (cursor.moveToNext()) {
+                val columnName = cursor.getString(cursor.getColumnIndex("name"))
+                if (columnName == "email") {
+                    emailColumnExists = true
+                    break
+                }
+            }
+            Assert.assertFalse("Email column should have been removed after rollback", emailColumnExists)
+        }
+    }
+
 
     @Test
     fun roomInitializeMigration() {

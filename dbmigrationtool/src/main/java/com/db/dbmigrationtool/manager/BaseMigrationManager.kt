@@ -33,9 +33,9 @@ abstract class BaseMigrationManager(
                 .forEach { migration ->
                     migration.rollbackScript?.let { rollbackScript ->
                         executeMigrationScript(dbTool, rollbackScript)
+                        updateVersion(dbTool, migration.version - 1)
+                        Log.i("DatabaseMigration", "Rolled back version ${migration.version}")
                     }
-                    updateVersion(dbTool, migration.version - 1)
-                    Log.i("DatabaseMigration", "Rolled back version ${migration.version}")
                 }
         } else {
             Log.i(

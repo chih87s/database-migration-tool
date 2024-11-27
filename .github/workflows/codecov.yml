@@ -24,6 +24,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Clean Gradle Cache
+        run: ./gradlew clean --no-daemon
+
       - name: Build and Test with Coverage
         run: ./gradlew clean build testDebugUnitTest
 

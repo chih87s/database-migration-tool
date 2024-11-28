@@ -5,9 +5,8 @@ import com.db.dbmigrationtool.manager.RoomMigrationManager
 import com.db.dbmigrationtool.manager.SQLiteMigrationManager
 
 class MigrationToolBuilder(
-    migrations: List<Migration> = listOf()
+    migrations: List<Migration> = listOf(),
 ) {
-
     private val migrations = migrations.toMutableList()
 
     fun addSingleMigration(migration: Migration): MigrationToolBuilder {
@@ -20,7 +19,6 @@ class MigrationToolBuilder(
         return this
     }
 
-
     fun buildSQLMigrateManager(): SQLiteMigrationManager {
         validateMigrations()
         return SQLiteMigrationManager(migrations)
@@ -31,10 +29,10 @@ class MigrationToolBuilder(
         return RoomMigrationManager(migrations)
     }
 
-    private fun validateMigrations(){
+    private fun validateMigrations() {
         migrations.sortBy { it.version }
         val versions = migrations.map { it.version }
-        if (versions.size != versions.toSet().size){
+        if (versions.size != versions.toSet().size) {
             throw IllegalArgumentException("Duplicate migration versions found: $versions")
         }
     }

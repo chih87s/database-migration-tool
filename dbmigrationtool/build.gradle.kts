@@ -22,7 +22,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
         debug {
@@ -50,20 +50,20 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.inline)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.robolectric)
 }
 
-val exclusions = listOf(
-    "**/R.class",
-    "**/R\$*.class",
-    "**/BuildConfig.*",
-    "**/Manifest*.*",
-    "**/*Test*.*"
-)
+val exclusions =
+    listOf(
+        "**/R.class",
+        "**/R\$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+    )
 
 tasks.withType(Test::class) {
     configure<JacocoTaskExtension> {
@@ -86,9 +86,11 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 
     classDirectories.setFrom(classFiles)
     sourceDirectories.setFrom(sourceFiles)
-    executionData.setFrom(fileTree("build") {
-        includes.add("jacoco/testDebugUnitTest.exec")
-    })
+    executionData.setFrom(
+        fileTree("build") {
+            includes.add("jacoco/testDebugUnitTest.exec")
+        },
+    )
 }
 
 tasks.named("build") {
@@ -96,10 +98,10 @@ tasks.named("build") {
 }
 
 val ver = "0.0.1"
-afterEvaluate{
-    publishing{
+afterEvaluate {
+    publishing {
         publications {
-            create<MavenPublication>("release"){
+            create<MavenPublication>("release") {
                 from(components["release"])
                 groupId = "com.github.chih87s"
                 artifactId = "com.db.dbmigrationtool"

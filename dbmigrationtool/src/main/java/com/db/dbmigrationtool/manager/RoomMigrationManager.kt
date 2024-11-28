@@ -10,10 +10,12 @@ import com.db.dbmigrationtool.tools.RoomMigrationTool
 import com.db.dbmigrationtool.utils.SQLStatementsUtils
 
 class RoomMigrationManager internal constructor(
-    migrations: List<Migration>
+    migrations: List<Migration>,
 ) : BaseMigrationManager(migrations) {
-
-    override fun executeMigrationScript(dbTool: DatabaseMigrationTool, script: String) {
+    override fun executeMigrationScript(
+        dbTool: DatabaseMigrationTool,
+        script: String,
+    ) {
         val roomDatabase = (dbTool as RoomMigrationTool).database
         val supportSQLiteDatabase = roomDatabase.openHelper.writableDatabase
         val statements = SQLStatementsUtils.splitSQLStatements(script)
@@ -52,24 +54,27 @@ class RoomMigrationManager internal constructor(
         return version
     }
 
-    override fun updateVersion(dbTool: DatabaseMigrationTool, version: Int) {
+    override fun updateVersion(
+        dbTool: DatabaseMigrationTool,
+        version: Int,
+    ) {
         val roomDatabase = (dbTool as RoomMigrationTool).database
         val supportSQLiteDatabase = roomDatabase.openHelper.writableDatabase
         initializeVersionTable(dbTool)
 
         supportSQLiteDatabase.beginTransaction()
         try {
-
-            val contentValues = ContentValues().apply {
-                put("version", version)
-            }
+            val contentValues =
+                ContentValues().apply {
+                    put("version", version)
+                }
 
             supportSQLiteDatabase.update(
                 "schema_version",
                 SQLiteDatabase.CONFLICT_NONE,
                 contentValues,
                 null,
-                null
+                null,
             )
 
             supportSQLiteDatabase.setTransactionSuccessful()
@@ -78,7 +83,6 @@ class RoomMigrationManager internal constructor(
         } finally {
             supportSQLiteDatabase.endTransaction()
         }
-
     }
 
     override fun initializeVersionTable(dbTool: DatabaseMigrationTool) {

@@ -6,21 +6,32 @@ import com.db.dbmigrationtool.exception.MigrationException
 import com.db.dbmigrationtool.interfaces.DatabaseMigration
 import com.db.dbmigrationtool.tools.DatabaseMigrationTool
 
-
 abstract class BaseMigrationManager(
-    private val migrations:List<Migration>
-): DatabaseMigration {
+    private val migrations: List<Migration>,
+) : DatabaseMigration {
+    abstract fun executeMigrationScript(
+        dbTool: DatabaseMigrationTool,
+        script: String,
+    )
 
-    abstract fun executeMigrationScript(dbTool: DatabaseMigrationTool, script: String)
     abstract fun getCurrentVersion(dbTool: DatabaseMigrationTool): Int
-    abstract fun updateVersion(dbTool: DatabaseMigrationTool, version: Int)
+
+    abstract fun updateVersion(
+        dbTool: DatabaseMigrationTool,
+        version: Int,
+    )
+
     abstract fun initializeVersionTable(dbTool: DatabaseMigrationTool)
 
-    override fun migrate(dbTool: DatabaseMigrationTool, currentVersion: Int, targetVersion: Int) {
-
+    override fun migrate(
+        dbTool: DatabaseMigrationTool,
+        currentVersion: Int,
+        targetVersion: Int,
+    ) {
         if (currentVersion < targetVersion) {
             // Forward migration
-            migrations.filter { it.version in (currentVersion + 1)..targetVersion }
+            migrations
+                .filter { it.version in (currentVersion + 1)..targetVersion }
                 .forEach { migration ->
                     executeMigrationScript(dbTool, migration.migrationScript)
                     updateVersion(dbTool, migration.version)
@@ -28,7 +39,8 @@ abstract class BaseMigrationManager(
                 }
         } else if (currentVersion > targetVersion) {
             // Rollback migrations
-            migrations.filter { it.version in (targetVersion + 1)..currentVersion }
+            migrations
+                .filter { it.version in (targetVersion + 1)..currentVersion }
                 .reversed()
                 .forEach { migration ->
                     migration.rollbackScript?.let { rollbackScript ->
@@ -40,20 +52,22 @@ abstract class BaseMigrationManager(
         } else {
             Log.i(
                 "DatabaseMigration",
-                "Database is already at version $currentVersion. No migration needed."
+                "Database is already at version $currentVersion. No migration needed.",
             )
         }
     }
 
-
-
-    override fun rollbackToVersion(dbTool: DatabaseMigrationTool, targetVersion: Int) {
+    override fun rollbackToVersion(
+        dbTool: DatabaseMigrationTool,
+        targetVersion: Int,
+    ) {
         val currentVersion = getCurrentVersion(dbTool)
         if (targetVersion >= currentVersion) {
             throw MigrationException("Target version must be less than the current version.")
         }
 
-        migrations.filter { it.version in (targetVersion + 1)..currentVersion }
+        migrations
+            .filter { it.version in (targetVersion + 1)..currentVersion }
             .reversed()
             .forEach { migration ->
                 migration.rollbackScript?.let { rollbackScript ->

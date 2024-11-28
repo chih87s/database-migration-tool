@@ -9,11 +9,12 @@ import com.db.dbmigrationtool.tools.SQLiteMigrationTool
 import com.db.dbmigrationtool.utils.SQLStatementsUtils
 
 class SQLiteMigrationManager internal constructor(
-    migrations: List<Migration>
-) : BaseMigrationManager(migrations)
-{
-
-    override fun executeMigrationScript(dbTool: DatabaseMigrationTool, script: String) {
+    migrations: List<Migration>,
+) : BaseMigrationManager(migrations) {
+    override fun executeMigrationScript(
+        dbTool: DatabaseMigrationTool,
+        script: String,
+    ) {
         val sqLiteDatabase = (dbTool as SQLiteMigrationTool).database
         val statements = SQLStatementsUtils.splitSQLStatements(script)
 
@@ -32,15 +33,19 @@ class SQLiteMigrationManager internal constructor(
         }
     }
 
-    override fun updateVersion(dbTool: DatabaseMigrationTool, version: Int) {
+    override fun updateVersion(
+        dbTool: DatabaseMigrationTool,
+        version: Int,
+    ) {
         val sqLiteDatabase = (dbTool as SQLiteMigrationTool).database
         initializeVersionTable(dbTool)
 
         sqLiteDatabase.beginTransaction()
         try {
-            val contentValues = ContentValues().apply {
-                put("version", version)
-            }
+            val contentValues =
+                ContentValues().apply {
+                    put("version", version)
+                }
             sqLiteDatabase.update("schema_version", contentValues, null, null)
             sqLiteDatabase.setTransactionSuccessful()
             Log.d("SQLiteMigration", "Updated schema_version to version $version")
@@ -77,6 +82,5 @@ class SQLiteMigrationManager internal constructor(
                 sqLiteDatabase.execSQL("INSERT INTO schema_version (version) VALUES (0);")
             }
         }
-
     }
 }

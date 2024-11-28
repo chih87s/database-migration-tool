@@ -4,16 +4,15 @@ import com.db.dbmigrationtool.utils.SQLStatementsUtils
 import org.junit.Assert
 import org.junit.Test
 
-
 class SQLStatementsUtilsTest {
-
     @Test
     fun testSplitSQLStatements_multipleStatements() {
-        val input = """
+        val input =
+            """
             CREATE TABLE users (id INTEGER PRIMARY KEY);
             INSERT INTO users (name, age) VALUES ('Alice', 30);
             INSERT INTO users (name, age) VALUES ('Bob', 25);
-        """.trimIndent()
+            """.trimIndent()
 
         val result = SQLStatementsUtils.splitSQLStatements(input)
 
@@ -44,10 +43,11 @@ class SQLStatementsUtilsTest {
 
     @Test
     fun testSplitSQLStatements_withExtraSpaces() {
-        val input = """
+        val input =
+            """
             CREATE TABLE users (id INTEGER PRIMARY KEY);
             INSERT INTO users (name, age) VALUES ('Alice', 30);
-        """.trimIndent()
+            """.trimIndent()
 
         val result = SQLStatementsUtils.splitSQLStatements(input)
 
@@ -68,10 +68,11 @@ class SQLStatementsUtilsTest {
 
     @Test
     fun testSplitSQLStatements_withSpacesAroundSemicolons() {
-        val input = """
+        val input =
+            """
             CREATE TABLE users (id INTEGER PRIMARY KEY) ;
             INSERT INTO users (name, age) VALUES ('Alice', 30) ;
-        """.trimIndent()
+            """.trimIndent()
 
         val result = SQLStatementsUtils.splitSQLStatements(input)
 
@@ -79,5 +80,4 @@ class SQLStatementsUtilsTest {
         Assert.assertEquals("CREATE TABLE users (id INTEGER PRIMARY KEY)", result[0])
         Assert.assertEquals("INSERT INTO users (name, age) VALUES ('Alice', 30)", result[1])
     }
-
 }

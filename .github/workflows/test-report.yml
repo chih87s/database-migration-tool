@@ -27,11 +27,11 @@ jobs:
       - name: Clean Gradle Cache
         run: ./gradlew clean --no-daemon
         
-      - name: Run Android Lint with Stacktrace
-        run: ./gradlew lint --stacktrace
-        
       - name: Build and Test with Coverage
         run: ./gradlew clean build testDebugUnitTest
+
+      - name: Run Android Lint with Stacktrace
+        run: ./gradlew lint --stacktrace
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
